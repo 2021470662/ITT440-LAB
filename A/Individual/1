@@ -17,7 +17,7 @@
   
   //When signal CTRL+C is received, it prints message and terminate the program
   
-  void sigint_handler(int_sig) {
+  void sigint_handler(int sig) {
   printf("\nThere's an interrupt recieved. Exiting...\n");
   sem_destroy(&sem);
   exit(EXIT_FAILURE);
@@ -27,9 +27,9 @@
   //to child process
   
   void parent_process() {
-  sleep(EXIT_SUCCESS);
+  sleep(1);
   fflush(stdin);
-  printf("\nEnter message to send to child process: ");
+  printf("\nEnter message to send to child processes: ");
   
   char message[256];
   if( fgets(message, sizeof(message), stdin) == NULL){
@@ -67,7 +67,7 @@
   exit(EXIT_SUCCESS);
   }
   
-  pid_t [id = fork();
+  pid_t pid = fork();
   if (pid == -1) {
   printf ("Error forking child %d\n", i+1);
   exit(EXIT_SUCCESS);
@@ -85,6 +85,6 @@
           }
         }
       }
-      sem_destrou(&sem);
+      sem_destroy(&sem);
       return EXIT_SUCCESS);
     }
