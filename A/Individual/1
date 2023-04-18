@@ -10,7 +10,7 @@
 
   int num_child = 0;
   pid_t child_pids[MAX_CHILD]; //Array to store child's PID
-  int pipe_fds[MAX_CHILD] [2]; //2D array to store file description of the pipes
+  int pipe_fds[MAX_CHILD][2]; //2D array to store file description of the pipes
                                //for each child process
   
   sem_t sem;
@@ -63,7 +63,7 @@
   
   for(int i = 0; i < MAX_CHILD; i++) {
   if(pipe(pipe_fds[i]) == -1) {
-  printf ("Error creating pipe for child %d\n", i+1);
+  printf("Error creating pipe for child %d\n", i+1);
   exit(EXIT_SUCCESS);
   }
   
@@ -86,5 +86,5 @@
         }
       }
       sem_destroy(&sem);
-      return EXIT_SUCCESS);
+      return (EXIT_SUCCESS);
     }
