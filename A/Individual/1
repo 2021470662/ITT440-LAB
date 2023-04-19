@@ -5,90 +5,89 @@
 #include <string.h>
 #include <semaphore.h>
 
-
 #define MAX_CHILD 5
 #define MSG_BUF_SIZE 256
 
+  int num_child = 0;
+  pid_t child_pids[MAX_CHILD]; //Array to store child's PID
+  int pipe_fds[MAX_CHILD][2]; //2D array to store file description of the pipes
+                               //for each child process
 
-        int num_child = 0;
-        pid_t child_pids[MAX_CHILD];    //array to store child's PID
-        int pipe_fds[MAX_CHILD][2];     //2D array to store file descriptors of>
-                                        //for each child process
-        sem_t sem;
-     //when signal CTRL+C is received, it prints message and terminate the p>
+  sem_t sem;
 
-        void sigint_handler(int sig) {
-        printf("\nThere's an interrupt received. Exiting...\n");
-        sem_destroy(&sem);
-        exit(EXIT_FAILURE);
-}
+  //When signal CTRL+C is received, it prints message and terminate the program
 
-        //prompt the user to enter a message and writes the message to the pipe>
-        //to child process
+  void sigint_handler(int sig) {
+  printf("\nThere's an interrupt recieved. Exiting...\n");
+  sem_destroy(&sem);
+  exit(EXIT_FAILURE);
+  }
 
-        void parent_process() {
-        sleep(1);
-        fflush(stdin);
-        printf("\nEnter message to send to child processes: ");
+  //Prompt the user to enter the message and writes the message to the pipe that connected
+  //to child process
 
+  int main(){
+  signal(SIGINT, sigint_handler);
+  sem_init(&sem, 0, 1);
+
+  for (int i = 0; i < MAX_CHILD; i++)
+
+{
+
+        if (pipe(pipe_fds[i]) < 0 || (child_pids[i] = fork()) < 0) {
+            perror("Failed to create child process");
+            exit(EXIT_FAILURE);}
+
+        if (child_pids[i] == 0) {
+            close(pipe_fds[i][1]); // close write end of pipe
+            while (1) {
+                char buf[MSG_BUF_SIZE];
+                              ssize_t bytes_read = read(pipe_fds[i][0], buf, MSG_BUF_SIZE);
+                if (bytes_read == -1) {
+                    perror("Failed to read from pipe");
+                    exit(EXIT_FAILURE);}
+
+                 else if (bytes_read == 0) {
+                    printf("Child process %d exiting\n", i);
+                    break;}
+
+                 else {
+                    printf("Child process %d received message: %s\n", i+1, buf);}
+
+            close(pipe_fds[i][0]); // close read end of pipe
+            exit(EXIT_SUCCESS);
+        }
+                }
+                 else {
+                close(pipe_fds[i][0]); // close read end of pipe
+                num_child++;}
+
+    }
         char message[256];
-        if( fgets(message, sizeof(message), stdin) == NULL){
-        printf("\nError reading input");
-        exit(EXIT_SUCCESS);
-}
-
-
-        sem_wait(&sem);
+        printf("Enter message to send to child processes:\n");
+        if (fgets(message, MSG_BUF_SIZE, stdin) == NULL) {
+        perror("Failed to read user input");
+        exit(EXIT_FAILURE);
+    }
         for (int i = 0; i < MAX_CHILD; i++) {
         printf("Parent writing to child %d\n", i+1);
         write(pipe_fds[i][1], message, sizeof(message));
         sleep(1);
     }
-    sem_post(&sem);
+        for (int j = 0; j < num_child; j++) {
+        if (write(pipe_fds[j][1], message, strlen(message) + 1) == -1) {
+            perror("Failed to write to pipe");
+            exit(EXIT_FAILURE);
+        }
 }
-
-
-        void child_process(int id) {
-        sem_wait(&sem);
-        printf("Child %d reading from pipe\n", id+1);
-
-        char message[256];
-        read(pipe_fds[id][0], message, sizeof(message));
-     printf("Child %d received message: %s", id+1, message);
-        sleep(1);
-        sem_post(&sem);
-}
-
-        int main() {
-        signal(SIGINT, sigint_handler);
-        sem_init(&sem, 0, 1);
-
-        for (int i = 0; i < MAX_CHILD; i++) {
-        if (pipe(pipe_fds[i]) == -1) {
-        printf("Error creating pipe for child %d\n", i+1);
-        exit(EXIT_SUCCESS);
-        }
-
-        pid_t pid = fork();
-        if (pid == -1) {
-        printf("Error forking child %d\n", i+1);
-        exit(EXIT_SUCCESS);
-          }
-        else if (pid == 0) {
-        child_process(i);
-        exit(EXIT_FAILURE);
-        }
-        else {
-                child_pids[i] = pid;
-                num_child++;
-
-                if (i == MAX_CHILD-1) {
-                parent_process();
-            }
-        }
+        for (int i = 0; i < num_child; i++) {
+        close(pipe_fds[i][1]); // close write end of pipe
+        close(pipe_fds[i][0]); // close read end of pipe
+        sleep(1); // wait for child to exit
     }
-    sem_destroy(&sem);
-    return EXIT_SUCCESS;
+     printf("All child processes have exited\n");
+     return 0;
 }
+
 
 
